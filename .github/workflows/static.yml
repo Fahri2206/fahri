@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIM-Kost - Sistem Informasi Manajemen & Ketersediaan Kamar Kost</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js for FEF-5 Laporan Visual -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .active-tab {
+            background-color: #2563eb;
+            color: #ffffff !important;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col md:flex-row">
+
+    <!-- SIDEBAR NAVIGASI (PEMILIK & PENGHUNI AKTOR) -->
+    <aside class="w-full md:w-64 bg-slate-900 text-white flex-shrink-0 flex flex-col justify-between shadow-xl">
+        <div>
+            <!-- Header Brand -->
+            <div class="p-5 border-b border-slate-800 flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center font-bold text-xl shadow-lg shadow-blue-500/30">
+                    <i class="fa-solid fa-house-user text-white"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg leading-tight tracking-wide">SIM-KOST</h1>
+                    <p class="text-xs text-slate-400">Universitas Brawijaya</p>
+                </div>
+            </div>
+
+            <!-- Profile Info & Switch Role -->
+            <div class="p-4 mx-3 my-3 bg-slate-800/60 rounded-xl border border-slate-700/50">
+                <div class="flex items-center space-x-3">
+                    <div class="w-9 h-9 rounded-full bg-amber-500 flex items-center justify-center font-bold text-slate-900">
+                        IA
+                    </div>
+                    <div class="overflow-hidden">
+                        <p class="text-xs font-semibold text-slate-200 truncate" id="userRoleText">Ibu Astuti (Pemilik)</p>
+                        <span class="inline-block px-2 py-0.5 text-[10px] font-medium bg-blue-500/20 text-blue-300 rounded-full">A-01 Full Access</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Navigation Links -->
+            <nav class="p-3 space-y-1">
+                <button onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-item w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-slate-800 transition active-tab">
+                    <i class="fa-solid fa-chart-pie w-5"></i>
+                    <span class="font-medium text-sm">Dashboard Status (FEF-1)</span>
+                </button>
+                <button onclick="switchTab('penyewa')" id="nav-penyewa" class="nav-item w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-slate-800 transition">
+                    <i class="fa-solid fa-users w-5"></i>
+                    <span class="font-medium text-sm">Data Penyewa (FEF-2)</span>
+                </button>
+                <button onclick="switchTab('transaksi')" id="nav-transaksi" class="nav-item w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-slate-800 transition">
+                    <i class="fa-solid fa-receipt w-5"></i>
+                    <span class="font-medium text-sm">Transaksi Sewa (FEF-3)</span>
+                </button>
+                <button onclick="switchTab('kerusakan')" id="nav-kerusakan" class="nav-item w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-slate-800 transition">
+                    <i class="fa-solid fa-wrench w-5"></i>
+                    <span class="font-medium text-sm">Lapor Kerusakan (FEF-6)</span>
+                </button>
+                <button onclick="switchTab('laporan')" id="nav-laporan" class="nav-item w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-slate-800 transition">
+                    <i class="fa-solid fa-file-invoice-dollar w-5"></i>
+                    <span class="font-medium text-sm">Laporan Bulanan (FEF-5)</span>
+                </button>
+            </nav>
+        </div>
+
+        <!-- Footer Info -->
+        <div class="p-4 text-xs text-slate-500 border-t border-slate-800 text-center">
+            Proyek RPL - D3 Teknologi Informasi
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT AREA -->
+    <main class="flex-1 flex flex-col min-w-0 overflow-y-auto">
+
+        <!-- Top Notification Banner (FEF-4: Pengingat Jatuh Tempo Otomatis) -->
+        <div id="dueDateAlertBanner" class="bg-amber-500/15 border-b border-amber-500/30 p-4 px-6 flex items-center justify-between text-amber-900 hidden">
+            <div class="flex items-center space-x-3">
+                <span class="flex h-3 w-3 relative">
+                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                  <span class="relative inline-flex rounded-full h-3 w-3 bg-amber-500"></span>
+                </span>
+                <div class="text-sm">
+                    <span class="font-semibold" id="alertBannerTitle">Pengingat Jatuh Tempo (FEF-4):</span>
+                    <span id="alertBannerText">Terdapat penyewa yang mendekati masa tenggat sewa!</span>
+                </div>
+            </div>
+            <button onclick="switchTab('penyewa')" class="px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold rounded-lg transition shadow-sm">
+                Lihat Detail
+            </button>
+        </div>
+
+        <!-- Dynamic Header -->
+        <header class="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
+            <div>
+                <h2 id="pageTitle" class="text-xl font-bold text-slate-800">Dashboard Status Kamar</h2>
+                <p id="pageSubtitle" class="text-xs text-slate-500">Pemantauan visual real-time status ketersediaan unit kamar kost</p>
+            </div>
+            <div class="flex items-center space-x-3">
+                <button onclick="resetDemoData()" class="text-xs px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg transition border border-slate-200 flex items-center space-x-1">
+                    <i class="fa-solid fa-rotate-right text-slate-400"></i>
+                    <span>Reset Data Demo</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- TAB 1: DASHBOARD KAMAR (FEF-1) -->
+        <section id="tab-dashboard" class="p-6 space-y-6">
+            <!-- Metrics Summary Cards -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+                    <div>
+                        <p class="text-xs text-slate-500 font-medium">Total Kamar</p>
+                        <h3 class="text-2xl font-bold text-slate-800 mt-1" id="statTotalRooms">0</h3>
+                    </div>
+                    <div class="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center text-slate-600 text-lg">
+                        <i class="fa-solid fa-door-closed"></i>
+                    </div>
+                </div>
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+                    <div>
+                        <p class="text-xs text-slate-500 font-medium">Kamar Kosong</p>
+                        <h3 class="text-2xl font-bold text-emerald-600 mt-1" id="statVacantRooms">0</h3>
+                    </div>
+                    <div class="w-12 h-12 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-600 text-lg">
+                        <i class="fa-solid fa-door-open"></i>
+                    </div>
+                </div>
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+                    <div>
+                        <p class="text-xs text-slate-500 font-medium">Kamar Terisi</p>
+                        <h3 class="text-2xl font-bold text-blue-600 mt-1" id="statOccupiedRooms">0</h3>
+                    </div>
+                    <div class="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600 text-lg">
+                        <i class="fa-solid fa-user-check"></i>
+                    </div>
+                </div>
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+                    <div>
+                        <p class="text-xs text-slate-500 font-medium">Dalam Perbaikan</p>
+                        <h3 class="text-2xl font-bold text-amber-600 mt-1" id="statMaintenanceRooms">0</h3>
+                    </div>
+                    <div class="w-12 h-12 bg-amber-50 rounded-xl flex items-center justify-center text-amber-600 text-lg">
+                        <i class="fa-solid fa-screwdriver-wrench"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filter Status & Add Room -->
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                <div class="flex space-x-2">
+                    <button onclick="filterRooms('ALL')" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 text-white shadow-sm room-filter-btn" id="filter-ALL">Semua</button>
+                    <button onclick="filterRooms('Kosong')" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 room-filter-btn" id="filter-Kosong">Kosong</button>
+                    <button onclick="filterRooms('Terisi')" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 room-filter-btn" id="filter-Terisi">Terisi</button>
+                    <button onclick="filterRooms('Perbaikan')" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 room-filter-btn" id="filter-Perbaikan">Perbaikan</button>
+                </div>
+                <button onclick="openAddRoomModal()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold flex items-center space-x-2 shadow-md transition">
+                    <i class="fa-solid fa-plus"></i>
+                    <span>Tambah Kamar Baru</span>
+                </button>
+            </div>
+
+            <!-- Room Grid Real-time (FEF-1 Visual Dashboard) -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5" id="roomGrid">
+                <!-- Dynamic Cards Inserted via JS -->
+            </div>
+        </section>
+
+        <!-- TAB 2: DATA PENYEWA (FEF-2) -->
+        <section id="tab-penyewa" class="p-6 space-y-6 hidden">
+            <div class="flex justify-between items-center">
+                <h3 class="text-lg font-bold text-slate-800">Daftar Penghuni Kost Terdaftar</h3>
+                <button onclick="openRegisterTenantModal()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold flex items-center space-x-2 shadow-md transition">
+                    <i class="fa-solid fa-user-plus"></i>
+                    <span>Registrasi Penyewa Baru</span>
+                </button>
+            </div>
+
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm text-slate-600">
+                        <thead class="bg-slate-50 text-slate-700 uppercase text-[11px] font-semibold tracking-wider border-b border-slate-200">
+                            <tr>
+                                <th class="p-4">Identitas Penghuni</th>
+                                <th class="p-4">No. HP / WA</th>
+                                <th class="p-4">Kamar</th>
+                                <th class="p-4">Tgl Jatuh Tempo</th>
+                                <th class="p-4">Status Masa Sewa</th>
+                                <th class="p-4 text-center">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tenantTableBody" class="divide-y divide-slate-100">
+                            <!-- Dynamic Content -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 3: TRANSAKSI SEWA (FEF-3) -->
+        <section id="tab-transaksi" class="p-6 space-y-6 hidden">
+            <div class="flex justify-between items-center">
+                <h3 class="text-lg font-bold text-slate-800">Pencatatan Riwayat Pembayaran Sewa</h3>
+                <button onclick="openAddPaymentModal()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold flex items-center space-x-2 shadow-md transition">
+                    <i class="fa-solid fa-file-circle-plus"></i>
+                    <span>Input Pembayaran Baru</span>
+                </button>
+            </div>
+
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm text-slate-600">
+                        <thead class="bg-slate-50 text-slate-700 uppercase text-[11px] font-semibold tracking-wider border-b border-slate-200">
+                            <tr>
+                                <th class="p-4">ID Transaksi</th>
+                                <th class="p-4">Nama Penyewa</th>
+                                <th class="p-4">Nominal</th>
+                                <th class="p-4">Tanggal Bayar</th>
+                                <th class="p-4">Bukti Transfer</th>
+                                <th class="p-4">Status Konfirmasi</th>
+                                <th class="p-4 text-center">Aksi Konfirmasi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="transactionTableBody" class="divide-y divide-slate-100">
+                            <!-- Dynamic Content -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 4: LAPOR KERUSAKAN FASILITAS (FEF-6) -->
+        <section id="tab-kerusakan" class="p-6 space-y-6 hidden">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h3 class="text-lg font-bold text-slate-800">Riwayat Perawatan & Perbaikan Unit Kamar</h3>
+                    <p class="text-xs text-slate-500">Mencatat keluhan fasilitas rusak untuk kontrol pemeliharaan</p>
+                </div>
+                <button onclick="openReportDamageModal()" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-semibold flex items-center space-x-2 shadow-md transition">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <span>Lapor Kerusakan Baru</span>
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6" id="damageReportsContainer">
+                <!-- Dynamic Content cards -->
+            </div>
+        </section>
+
+        <!-- TAB 5: LAPORAN BULANAN (FEF-5) -->
+        <section id="tab-laporan" class="p-6 space-y-6 hidden">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h3 class="text-lg font-bold text-slate-800">Laporan Rekapitulasi Keuangan & Hunian</h3>
+                    <p class="text-xs text-slate-500">Rekapitulasi otomatis bulanan untuk pertanggungjawaban keluarga/pengurus</p>
+                </div>
+                <button onclick="exportReportToPrint()" class="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-semibold flex items-center space-x-2 shadow-md transition">
+                    <i class="fa-solid fa-print"></i>
+                    <span>Cetak / Ekspor PDF</span>
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Summary Card Laporan -->
+                <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                    <h4 class="font-bold text-slate-700 border-b pb-2">Ringkasan Bulan Ini</h4>
+                    <div class="space-y-3">
+                        <div class="flex justify-between text-sm">
+                            <span class="text-slate-500">Total Pemasukan Sewa:</span>
+                            <span class="font-bold text-emerald-600" id="reportTotalIncome">Rp 0</span>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <span class="text-slate-500">Tingkat Okupansi Kamar:</span>
+                            <span class="font-bold text-blue-600" id="reportOccupancyRate">0%</span>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <span class="text-slate-500">Kamar Membutuhkan Perbaikan:</span>
+                            <span class="font-bold text-amber-600" id="reportDamageCount">0 Unit</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Graphic Chart.js Chart -->
+                <div class="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                    <h4 class="font-bold text-slate-700 mb-4">Grafik Status Okupansi Kamar Real-time</h4>
+                    <div class="h-64">
+                        <canvas id="occupancyChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- MODAL 1: Tambah Kamar Baru -->
+    <div id="modalAddRoom" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div class="flex justify-between items-center border-b pb-3">
+                <h3 class="font-bold text-slate-800">Tambah Unit Kamar Baru</h3>
+                <button onclick="closeModal('modalAddRoom')" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <form id="formAddRoom" onsubmit="handleAddRoom(event)" class="space-y-3">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Nomor / Nama Kamar</label>
+                    <input type="text" id="inputRoomNumber" required placeholder="Contoh: Kamar 104" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Harga Sewa Per Bulan (Rp)</label>
+                    <input type="number" id="inputRoomPrice" required placeholder="850000" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div class="flex justify-end space-x-2 pt-3">
+                    <button type="button" onclick="closeModal('modalAddRoom')" class="px-4 py-2 text-xs font-semibold text-slate-600 rounded-xl bg-slate-100 hover:bg-slate-200">Batal</button>
+                    <button type="submit" class="px-4 py-2 text-xs font-semibold text-white rounded-xl bg-blue-600 hover:bg-blue-700 shadow-md">Simpan Kamar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 2: Registrasi Penyewa Baru (FEF-2) -->
+    <div id="modalRegisterTenant" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div class="flex justify-between items-center border-b pb-3">
+                <h3 class="font-bold text-slate-800">Registrasi Penyewa Kost Baru</h3>
+                <button onclick="closeModal('modalRegisterTenant')" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <form id="formRegisterTenant" onsubmit="handleRegisterTenant(event)" class="space-y-3">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Nama Lengkap Penyewa</label>
+                    <input type="text" id="inputTenantName" required placeholder="Budi Santoso" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">No. HP / WhatsApp</label>
+                    <input type="tel" id="inputTenantPhone" required placeholder="081234567890" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Pilih Kamar Kosong</label>
+                    <select id="selectTenantRoom" required class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <!-- Filled dynamically -->
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Tanggal Jatuh Tempo Sewa Pertama</label>
+                    <input type="date" id="inputTenantDueDate" required class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div class="flex justify-end space-x-2 pt-3">
+                    <button type="button" onclick="closeModal('modalRegisterTenant')" class="px-4 py-2 text-xs font-semibold text-slate-600 rounded-xl bg-slate-100 hover:bg-slate-200">Batal</button>
+                    <button type="submit" class="px-4 py-2 text-xs font-semibold text-white rounded-xl bg-blue-600 hover:bg-blue-700 shadow-md">Simpan Data Penyewa</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 3: Input Pembayaran Sewa (FEF-3) -->
+    <div id="modalAddPayment" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div class="flex justify-between items-center border-b pb-3">
+                <h3 class="font-bold text-slate-800">Pencatatan Pembayaran Sewa</h3>
+                <button onclick="closeModal('modalAddPayment')" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <form id="formAddPayment" onsubmit="handleAddPayment(event)" class="space-y-3">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Pilih Penyewa</label>
+                    <select id="selectPaymentTenant" required class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <!-- Filled dynamically -->
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Nominal Pembayaran (Rp)</label>
+                    <input type="number" id="inputPaymentAmount" required placeholder="850000" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Bukti Transfer (URL Mockup)</label>
+                    <input type="text" id="inputPaymentProof" required value="https://placehold.co/300x400/2563eb/ffffff?text=Bukti+Transfer" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div class="flex justify-end space-x-2 pt-3">
+                    <button type="button" onclick="closeModal('modalAddPayment')" class="px-4 py-2 text-xs font-semibold text-slate-600 rounded-xl bg-slate-100 hover:bg-slate-200">Batal</button>
+                    <button type="submit" class="px-4 py-2 text-xs font-semibold text-white rounded-xl bg-emerald-600 hover:bg-emerald-700 shadow-md">Simpan Transaksi</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 4: Lapor Kerusakan Fasilitas (FEF-6) -->
+    <div id="modalReportDamage" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div class="flex justify-between items-center border-b pb-3">
+                <h3 class="font-bold text-slate-800">Lapor Kerusakan Fasilitas Kamar</h3>
+                <button onclick="closeModal('modalReportDamage')" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <form id="formReportDamage" onsubmit="handleReportDamage(event)" class="space-y-3">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Pilih Kamar Bermasalah</label>
+                    <select id="selectDamageRoom" required class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <!-- Filled dynamically -->
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Deskripsi Kerusakan</label>
+                    <textarea id="inputDamageDesc" required rows="3" placeholder="Contoh: Kran air mandi bocor & AC kurang dingin" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                </div>
+                <div class="flex justify-end space-x-2 pt-3">
+                    <button type="button" onclick="closeModal('modalReportDamage')" class="px-4 py-2 text-xs font-semibold text-slate-600 rounded-xl bg-slate-100 hover:bg-slate-200">Batal</button>
+                    <button type="submit" class="px-4 py-2 text-xs font-semibold text-white rounded-xl bg-amber-600 hover:bg-amber-700 shadow-md">Kirim Laporan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- APPLICATION JAVASCRIPT / TYPESCRIPT LOGIC -->
+    <script>
+        // ==========================================
+        // STATE DATA APPLICATION (LOCAL STORAGE READY)
+        // ==========================================
+        let rooms = [
+            { id: 'R101', roomNumber: 'Kamar 101', price: 850000, status: 'Terisi' },
+            { id: 'R102', roomNumber: 'Kamar 102', price: 850000, status: 'Kosong' },
+            { id: 'R103', roomNumber: 'Kamar 103', price: 900000, status: 'Perbaikan' },
+            { id: 'R104', roomNumber: 'Kamar 104', price: 850000, status: 'Kosong' }
+        ];
+
+        // Format Date Helper
+        const today = new Date();
+        const nearDue = new Date(today);
+        nearDue.setDate(today.getDate() + 2); // 2 Hari lagi (Trigger FEF-4)
+
+        let tenants = [
+            { id: 'T001', name: 'Budi Santoso', phone: '081234567890', roomId: 'R101', dueDate: nearDue.toISOString().split('T')[0] }
+        ];
+
+        let transactions = [
+            { id: 'TX-1001', tenantId: 'T001', amount: 850000, date: new Date().toISOString().split('T')[0], proofUrl: 'https://placehold.co/300x400/2563eb/ffffff?text=Bukti+Lunas', confirmed: true }
+        ];
+
+        let damageReports = [
+            { id: 'REP-001', roomId: 'R103', description: 'Kran air mandi bocor dan air tidak mengalir', date: new Date().toISOString().split('T')[0], resolved: false }
+        ];
+
+        let activeFilter = 'ALL';
+        let chartInstance = null;
+
+        // ==========================================
+        // INITIALIZATION
+        // ==========================================
+        window.onload = function() {
+            renderDashboard();
+            renderTenants();
+            renderTransactions();
+            renderDamageReports();
+            checkDueDateAlerts();
+            initChart();
+        };
+
+        // Tab Switcher
+        function switchTab(tabId) {
+            document.querySelectorAll('main > section').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active-tab'));
+
+            document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+            document.getElementById(`nav-${tabId}`).classList.add('active-tab');
+
+            // Titles Update
+            const titles = {
+                'dashboard': ['Dashboard Status Kamar', 'Pemantauan visual real-time status ketersediaan unit kamar kost'],
+                'penyewa': ['Kelola Data Penyewa', 'Pendaftaran & pengelolaan identitas penghuni kost'],
+                'transaksi': ['Transaksi & Pembayaran', 'Konfirmasi penerimaan pembayaran sewa bulanan'],
+                'kerusakan': ['Lapor Kerusakan Fasilitas', 'Pencatatan pemeliharaan perbaikan unit kamar'],
+                'laporan': ['Laporan Bulanan', 'Ringkasan performa keuangan dan statistik okupansi']
+            };
+
+            document.getElementById('pageTitle').innerText = titles[tabId][0];
+            document.getElementById('pageSubtitle').innerText = titles[tabId][1];
+
+            if (tabId === 'laporan') {
+                updateReportData();
+            }
+        }
+
+        // ==========================================
+        // FEF-1: DASHBOARD REAL-TIME
+        // ==========================================
+        function renderDashboard() {
+            const grid = document.getElementById('roomGrid');
+            grid.innerHTML = '';
+
+            // Stats Counter
+            const total = rooms.length;
+            const vacant = rooms.filter(r => r.status === 'Kosong').length;
+            const occupied = rooms.filter(r => r.status === 'Terisi').length;
+            const maintenance = rooms.filter(r => r.status === 'Perbaikan').length;
+
+            document.getElementById('statTotalRooms').innerText = total;
+            document.getElementById('statVacantRooms').innerText = vacant;
+            document.getElementById('statOccupiedRooms').innerText = occupied;
+            document.getElementById('statMaintenanceRooms').innerText = maintenance;
+
+            // Filter
+            const filtered = activeFilter === 'ALL' ? rooms : rooms.filter(r => r.status === activeFilter);
+
+            filtered.forEach(room => {
+                const tenant = tenants.find(t => t.roomId === room.id);
+                
+                let statusBadge = '';
+                let borderStyle = '';
+                
+                if (room.status === 'Kosong') {
+                    statusBadge = `<span class="px-2.5 py-1 text-xs font-semibold bg-emerald-100 text-emerald-700 rounded-full"><i class="fa-solid fa-circle text-[8px] mr-1"></i>Kosong</span>`;
+                    borderStyle = 'border-emerald-200 bg-emerald-50/20';
+                } else if (room.status === 'Terisi') {
+                    statusBadge = `<span class="px-2.5 py-1 text-xs font-semibold bg-blue-100 text-blue-700 rounded-full"><i class="fa-solid fa-circle text-[8px] mr-1"></i>Terisi</span>`;
+                    borderStyle = 'border-blue-200 bg-blue-50/20';
+                } else {
+                    statusBadge = `<span class="px-2.5 py-1 text-xs font-semibold bg-amber-100 text-amber-700 rounded-full"><i class="fa-solid fa-circle text-[8px] mr-1"></i>Perbaikan</span>`;
+                    borderStyle = 'border-amber-200 bg-amber-50/20';
+                }
+
+                const cardHtml = `
+                    <div class="bg-white rounded-2xl p-5 border ${borderStyle} shadow-sm hover:shadow-md transition flex flex-col justify-between space-y-4">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h4 class="font-bold text-lg text-slate-800">${room.roomNumber}</h4>
+                                <p class="text-xs text-slate-500 font-medium">Rp ${room.price.toLocaleString('id-ID')} / bln</p>
+                            </div>
+                            ${statusBadge}
+                        </div>
+
+                        <div class="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                            <p class="text-[11px] text-slate-400 font-medium uppercase">Penghuni Saat Ini</p>
+                            <p class="text-sm font-semibold text-slate-700 mt-0.5">${tenant ? tenant.name : '<span class="text-slate-400 font-normal italic">Tidak Ada Penghuni</span>'}</p>
+                            ${tenant ? `<p class="text-xs text-slate-500 mt-1"><i class="fa-solid fa-calendar-day text-slate-400 mr-1"></i>Jatuh Tempo: ${tenant.dueDate}</p>` : ''}
+                        </div>
+
+                        <div class="flex space-x-2 pt-1 border-t border-slate-100">
+                            <button onclick="deleteRoom('${room.id}')" class="text-xs text-rose-600 hover:text-rose-700 font-medium px-2 py-1">Hapus</button>
+                        </div>
+                    </div>
+                `;
+                grid.innerHTML += cardHtml;
+            });
+        }
+
+        function filterRooms(status) {
+            activeFilter = status;
+            document.querySelectorAll('.room-filter-btn').forEach(btn => {
+                btn.classList.remove('bg-slate-800', 'text-white');
+                btn.classList.add('bg-white', 'text-slate-600');
+            });
+            document.getElementById(`filter-${status}`).classList.add('bg-slate-800', 'text-white');
+            document.getElementById(`filter-${status}`).classList.remove('bg-white', 'text-slate-600');
+            renderDashboard();
+        }
+
+        function handleAddRoom(e) {
+            e.preventDefault();
+            const number = document.getElementById('inputRoomNumber').value;
+            const price = parseInt(document.getElementById('inputRoomPrice').value);
+
+            const newRoom = {
+                id: 'R' + (rooms.length + 101),
+                roomNumber: number,
+                price: price,
+                status: 'Kosong'
+            };
+
+            rooms.push(newRoom);
+            closeModal('modalAddRoom');
+            renderDashboard();
+            checkDueDateAlerts();
+        }
+
+        function deleteRoom(roomId) {
+            rooms = rooms.filter(r => r.id !== roomId);
+            renderDashboard();
+        }
+
+        // ==========================================
+        // FEF-2: DATA PENYEWA
+        // ==========================================
+        function renderTenants() {
+            const tbody = document.getElementById('tenantTableBody');
+            tbody.innerHTML = '';
+
+            tenants.forEach(t => {
+                const room = rooms.find(r => r.id === t.roomId);
+                
+                // FEF-4 Due Date Logic Calculation
+                const dueDate = new Date(t.dueDate);
+                const diffDays = Math.ceil((dueDate - new Date()) / (1000 * 60 * 60 * 24));
+                
+                let badge = `<span class="px-2.5 py-1 text-xs font-semibold bg-emerald-100 text-emerald-700 rounded-full">Aman (${diffDays} Hari)</span>`;
+                if (diffDays <= 3 && diffDays >= 0) {
+                    badge = `<span class="px-2.5 py-1 text-xs font-semibold bg-amber-100 text-amber-700 rounded-full animate-pulse">Segera Jatuh Tempo (${diffDays} Hari)</span>`;
+                } else if (diffDays < 0) {
+                    badge = `<span class="px-2.5 py-1 text-xs font-semibold bg-rose-100 text-rose-700 rounded-full">Menunggak (${Math.abs(diffDays)} Hari)</span>`;
+                }
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td class="p-4 font-semibold text-slate-800">${t.name}</td>
+                        <td class="p-4">${t.phone}</td>
+                        <td class="p-4 font-medium text-blue-600">${room ? room.roomNumber : '-'}</td>
+                        <td class="p-4 font-mono">${t.dueDate}</td>
+                        <td class="p-4">${badge}</td>
+                        <td class="p-4 text-center space-x-2">
+                            <button onclick="sendWhatsappReminder('${t.phone}', '${t.name}', '${t.dueDate}')" class="text-xs px-2.5 py-1.5 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 rounded-lg font-medium"><i class="fa-brands fa-whatsapp mr-1"></i>Pengingat</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        function openRegisterTenantModal() {
+            const select = document.getElementById('selectTenantRoom');
+            select.innerHTML = '';
+            const vacantRooms = rooms.filter(r => r.status === 'Kosong');
+            
+            if(vacantRooms.length === 0) {
+                alert('Tidak ada kamar kosong yang tersedia saat ini.');
+                return;
+            }
+
+            vacantRooms.forEach(r => {
+                select.innerHTML += `<option value="${r.id}">${r.roomNumber} - Rp ${r.price.toLocaleString('id-ID')}</option>`;
+            });
+
+            openModal('modalRegisterTenant');
+        }
+
+        function handleRegisterTenant(e) {
+            e.preventDefault();
+            const name = document.getElementById('inputTenantName').value;
+            const phone = document.getElementById('inputTenantPhone').value;
+            const roomId = document.getElementById('selectTenantRoom').value;
+            const dueDate = document.getElementById('inputTenantDueDate').value;
+
+            const newTenant = {
+                id: 'T' + String(tenants.length + 1).padStart(3, '0'),
+                name, phone, roomId, dueDate
+            };
+
+            tenants.push(newTenant);
+
+            // Auto change room status to 'Terisi'
+            const room = rooms.find(r => r.id === roomId);
+            if(room) room.status = 'Terisi';
+
+            closeModal('modalRegisterTenant');
+            renderDashboard();
+            renderTenants();
+            checkDueDateAlerts();
+        }
+
+        // ==========================================
+        // FEF-3: TRANSAKSI & PEMBAYARAN
+        // ==========================================
+        function renderTransactions() {
+            const tbody = document.getElementById('transactionTableBody');
+            tbody.innerHTML = '';
+
+            transactions.forEach(tx => {
+                const tenant = tenants.find(t => t.id === tx.tenantId);
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td class="p-4 font-mono text-xs font-bold text-slate-700">${tx.id}</td>
+                        <td class="p-4 font-semibold text-slate-800">${tenant ? tenant.name : '-'}</td>
+                        <td class="p-4 font-semibold text-emerald-600">Rp ${tx.amount.toLocaleString('id-ID')}</td>
+                        <td class="p-4 font-mono text-xs">${tx.date}</td>
+                        <td class="p-4"><a href="${tx.proofUrl}" target="_blank" class="text-xs text-blue-600 underline">Lihat Bukti</a></td>
+                        <td class="p-4">${tx.confirmed ? '<span class="px-2 py-1 text-xs bg-emerald-100 text-emerald-700 rounded-full font-semibold">Terkonfirmasi</span>' : '<span class="px-2 py-1 text-xs bg-amber-100 text-amber-700 rounded-full font-semibold">Menunggu Konfirmasi</span>'}</td>
+                        <td class="p-4 text-center">
+                            ${!tx.confirmed ? `<button onclick="confirmPayment('${tx.id}')" class="px-3 py-1 bg-blue-600 text-white rounded-lg text-xs font-semibold shadow hover:bg-blue-700">Konfirmasi</button>` : '<i class="fa-solid fa-check text-emerald-500"></i>'}
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        function openAddPaymentModal() {
+            const select = document.getElementById('selectPaymentTenant');
+            select.innerHTML = '';
+            tenants.forEach(t => {
+                select.innerHTML += `<option value="${t.id}">${t.name}</option>`;
+            });
+            openModal('modalAddPayment');
+        }
+
+        function handleAddPayment(e) {
+            e.preventDefault();
+            const tenantId = document.getElementById('selectPaymentTenant').value;
+            const amount = parseInt(document.getElementById('inputPaymentAmount').value);
+            const proofUrl = document.getElementById('inputPaymentProof').value;
+
+            const newTx = {
+                id: 'TX-' + Math.floor(1000 + Math.random() * 9000),
+                tenantId, amount,
+                date: new Date().toISOString().split('T')[0],
+                proofUrl,
+                confirmed: false
+            };
+
+            transactions.push(newTx);
+            closeModal('modalAddPayment');
+            renderTransactions();
+        }
+
+        function confirmPayment(txId) {
+            const tx = transactions.find(t => t.id === txId);
+            if(tx) {
+                tx.confirmed = true;
+                
+                // Update Due Date Tenant 1 Month Forward
+                const tenant = tenants.find(t => t.id === tx.tenantId);
+                if (tenant) {
+                    const currentDue = new Date(tenant.dueDate);
+                    currentDue.setMonth(currentDue.getMonth() + 1);
+                    tenant.dueDate = currentDue.toISOString().split('T')[0];
+                }
+
+                renderTransactions();
+                renderTenants();
+                checkDueDateAlerts();
+            }
+        }
+
+        // ==========================================
+        // FEF-4: AUTOMATED DUE DATE ALERT BANNER
+        // ==========================================
+        function checkDueDateAlerts() {
+            const banner = document.getElementById('dueDateAlertBanner');
+            let urgentCount = 0;
+
+            tenants.forEach(t => {
+                const diffDays = Math.ceil((new Date(t.dueDate) - new Date()) / (1000 * 60 * 60 * 24));
+                if (diffDays <= 3) urgentCount++;
+            });
+
+            if (urgentCount > 0) {
+                banner.classList.remove('hidden');
+                document.getElementById('alertBannerText').innerText = `Terdapat ${urgentCount} penyewa yang akan/sudah melewati jatuh tempo pembayaran sewa!`;
+            } else {
+                banner.classList.add('hidden');
+            }
+        }
+
+        function sendWhatsappReminder(phone, name, dueDate) {
+            const msg = `Halo Sdr/i ${name}, mengingatkan bahwa pembayaran sewa kost Anda akan jatuh tempo pada ${dueDate}. Mohon dapat melakukan pembayaran secara berkala. Terima Kasih!`;
+            window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+        }
+
+        // ==========================================
+        // FEF-6: LAPOR KERUSAKAN FASILITAS
+        // ==========================================
+        function renderDamageReports() {
+            const container = document.getElementById('damageReportsContainer');
+            container.innerHTML = '';
+
+            damageReports.forEach(rep => {
+                const room = rooms.find(r => r.id === rep.roomId);
+
+                container.innerHTML += `
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+                        <div class="flex justify-between items-center border-b pb-2">
+                            <span class="font-bold text-slate-800">${room ? room.roomNumber : '-'}</span>
+                            ${rep.resolved ? '<span class="px-2 py-0.5 text-[10px] bg-emerald-100 text-emerald-700 rounded-full font-bold">Selesai</span>' : '<span class="px-2 py-0.5 text-[10px] bg-amber-100 text-amber-700 rounded-full font-bold">Dalam Proses</span>'}
+                        </div>
+                        <p class="text-xs text-slate-600">${rep.description}</p>
+                        <p class="text-[10px] text-slate-400 font-mono">Tgl Lapor: ${rep.date}</p>
+                        ${!rep.resolved ? `<button onclick="resolveDamage('${rep.id}')" class="w-full py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold">Tandai Selesai Diperbaiki</button>` : ''}
+                    </div>
+                `;
+            });
+        }
+
+        function openReportDamageModal() {
+            const select = document.getElementById('selectDamageRoom');
+            select.innerHTML = '';
+            rooms.forEach(r => {
+                select.innerHTML += `<option value="${r.id}">${r.roomNumber}</option>`;
+            });
+            openModal('modalReportDamage');
+        }
+
+        function handleReportDamage(e) {
+            e.preventDefault();
+            const roomId = document.getElementById('selectDamageRoom').value;
+            const description = document.getElementById('inputDamageDesc').value;
+
+            const newReport = {
+                id: 'REP-' + Math.floor(100 + Math.random() * 900),
+                roomId, description,
+                date: new Date().toISOString().split('T')[0],
+                resolved: false
+            };
+
+            damageReports.push(newReport);
+
+            // Change Room Status to 'Perbaikan'
+            const room = rooms.find(r => r.id === roomId);
+            if(room) room.status = 'Perbaikan';
+
+            closeModal('modalReportDamage');
+            renderDashboard();
+            renderDamageReports();
+        }
+
+        function resolveDamage(reportId) {
+            const rep = damageReports.find(r => r.id === reportId);
+            if (rep) {
+                rep.resolved = true;
+                const room = rooms.find(r => r.id === rep.roomId);
+                if (room) {
+                    const isOccupied = tenants.some(t => t.roomId === room.id);
+                    room.status = isOccupied ? 'Terisi' : 'Kosong';
+                }
+                renderDashboard();
+                renderDamageReports();
+            }
+        }
+
+        // ==========================================
+        // FEF-5: REKAPITULASI LAPORAN & EXPORT
+        // ==========================================
+        function updateReportData() {
+            let totalIncome = transactions.filter(t => t.confirmed).reduce((sum, t) => sum + t.amount, 0);
+            let totalRooms = rooms.length;
+            let occupiedRooms = rooms.filter(r => r.status === 'Terisi').length;
+            let occRate = totalRooms > 0 ? Math.round((occupiedRooms / totalRooms) * 100) : 0;
+            let damageCount = damageReports.filter(r => !r.resolved).length;
+
+            document.getElementById('reportTotalIncome').innerText = `Rp ${totalIncome.toLocaleString('id-ID')}`;
+            document.getElementById('reportOccupancyRate').innerText = `${occRate}%`;
+            document.getElementById('reportDamageCount').innerText = `${damageCount} Unit`;
+
+            if (chartInstance) {
+                chartInstance.data.datasets[0].data = [
+                    rooms.filter(r => r.status === 'Kosong').length,
+                    rooms.filter(r => r.status === 'Terisi').length,
+                    rooms.filter(r => r.status === 'Perbaikan').length
+                ];
+                chartInstance.update();
+            }
+        }
+
+        function initChart() {
+            const ctx = document.getElementById('occupancyChart').getContext('2d');
+            chartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Kosong', 'Terisi', 'Perbaikan'],
+                    datasets: [{
+                        data: [
+                            rooms.filter(r => r.status === 'Kosong').length,
+                            rooms.filter(r => r.status === 'Terisi').length,
+                            rooms.filter(r => r.status === 'Perbaikan').length
+                        ],
+                        backgroundColor: ['#10b981', '#3b82f6', '#f59e0b']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+            });
+        }
+
+        function exportReportToPrint() {
+            window.print();
+        }
+
+        // Reset Demo
+        function resetDemoData() {
+            location.reload();
+        }
+
+        // Helper Modal Open/Close
+        function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+        function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+    </script>
+</body>
+</html>
